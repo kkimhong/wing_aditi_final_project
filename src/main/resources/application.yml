@@ -1,12 +1,18 @@
 # ---- Shared / Base Configuration ----
 spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s
+
   application:
-    name: spring-auth-jwt
+    name: company-expense-tracker
   profiles:
     default: dev
   jpa:
     hibernate:
       ddl-auto: update
+      generate_statistics: true
     show-sql: false
     properties:
       hibernate:
@@ -40,6 +46,7 @@ management:
 logging:
   level:
     root: INFO
+    org.hibernate.SQL: DEBUG
 
 ---
 # ============================================================
@@ -51,19 +58,26 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: 12345
+    url: jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.oirqhgwapzykewevvynq
+    password: postgres@123
+#    url: jdbc:postgresql://localhost:5432/expense_tracker_db
+#    username: postgres
+#    password: 12345
+    driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
+      minimum-idle: 2          # keep connections warm
+      maximum-pool-size: 10
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     defer-datasource-initialization: true
     show-sql: true
 
-# Hardcoded JWT secret for local dev only
 jwt:
   secret: ${JWT_SECRET:ihKdPMqqzZRStWHFpAx/u98cZ2bbgBFW9egCDyIOHAU=}
   expiration: 86400000
@@ -72,34 +86,36 @@ logging:
   level:
     com.example: DEBUG
     org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.stat: DEBUG
 
 ---
 # ============================================================
 # PROD Profile — active when: SPRING_PROFILES_ACTIVE=prod
-# ============================================================
-spring:
-  config:
-    activate:
-      on-profile: prod
-
-  datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      connection-test-query: SELECT 1
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-
-logging:
-  level:
-    root: WARN
-    com.example: INFO
+## ============================================================
+#spring:
+#  config:
+#    activate:
+#      on-profile: prod
+#
+#  datasource:
+#    url: ${SPRING_DATASOURCE_URL}
+#    username: ${SPRING_DATASOURCE_USERNAME}
+#    password: ${SPRING_DATASOURCE_PASSWORD}
+#    hikari:
+#      maximum-pool-size: 10
+#      minimum-idle: 2
+#      connection-timeout: 30000
+#      idle-timeout: 600000
+#      max-lifetime: 1800000
+#      connection-test-query: SELECT 1
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: create-drop
+#    show-sql: false
+#
+#logging:
+#  level:
+#    root: WARN
+#    com.example: INFO
