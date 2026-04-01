@@ -41,6 +41,7 @@ public class PermissionSeeder implements ApplicationRunner {
                 Map.of("module", "expenses", "action", "read_own"),
                 Map.of("module", "expenses", "action", "read_all"),
                 Map.of("module", "expenses", "action", "approve"),
+                Map.of("module", "expenses", "action", "approve_own"),
                 Map.of("module", "expenses", "action", "reject"),
 
                 // reports
@@ -108,6 +109,7 @@ public class PermissionSeeder implements ApplicationRunner {
                         "expenses:read_own",
                         "expenses:read_all",
                         "expenses:approve",
+                        "expenses:approve_own",
                         "expenses:reject",
                         "reports:read",
                         "reports:export",

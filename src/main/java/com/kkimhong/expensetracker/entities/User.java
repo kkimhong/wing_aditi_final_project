@@ -45,7 +45,7 @@ public class User implements UserDetails {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean isActive = true;
+    private boolean active = true;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -93,10 +93,27 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return this.isActive;
+        return this.active;
     }
 
     // ── Permission helper ──────────────────────────────────
+
+    public Role getRole() {
+        return userRoles.stream()
+                .filter(UserRole::isActive)
+                .findFirst()
+                .map(UserRole::getRole)
+                .orElse(null);
+    }
+
+    public String getRoleName() {
+        Role role = getRole();
+        return role != null ? role.getName() : null;
+    }
+
+    public String getDepartmentName() {
+        return department != null ? department.getName() : null;
+    }
 
     public List<String> getPermissionKeys() {
         return getAuthorities().stream()

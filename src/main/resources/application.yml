@@ -54,6 +54,7 @@ logging:
 # ============================================================
 spring:
   config:
+    import: optional:file:.env
     activate:
       on-profile: dev
 
@@ -61,12 +62,9 @@ spring:
     url: jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.oirqhgwapzykewevvynq
     password: postgres@123
-#    url: jdbc:postgresql://localhost:5432/expense_tracker_db
-#    username: postgres
-#    password: 12345
     driver-class-name: org.postgresql.Driver
     hikari:
-      minimum-idle: 2          # keep connections warm
+      minimum-idle: 2
       maximum-pool-size: 10
       connection-timeout: 20000
       idle-timeout: 300000
@@ -81,6 +79,11 @@ spring:
 jwt:
   secret: ${JWT_SECRET:ihKdPMqqzZRStWHFpAx/u98cZ2bbgBFW9egCDyIOHAU=}
   expiration: 86400000
+
+supabase:
+  url: ${SUPABASE_URL:https://oirqhgwapzykewevvynq.supabase.co}
+  key: ${SUPABASE_SERVICE_KEY:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcnFoZ3dhcHp5a2V3ZXZ2eW5xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDAyNzAyMSwiZXhwIjoyMDg5NjAzMDIxfQ.QygwpbmQr3dWP3JDyEeMBlgv52f7p_sdKdVztpklVC4}
+  bucket: ${SUPABASE_BUCKET:receipts}
 
 logging:
   level:

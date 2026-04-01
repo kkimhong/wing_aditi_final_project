@@ -15,7 +15,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
-    Optional<User> findByEmailAndIsActiveTrue(String email);
+    Optional<User> findByEmailAndActiveTrue(String email);
 
     List<User> findByDepartmentId(UUID departmentId);
 
@@ -26,9 +26,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 LEFT JOIN FETCH r.rolePermissions rp
                 LEFT JOIN FETCH rp.permission
                 WHERE u.email = :email
-                AND u.isActive = true
+                AND u.active = true
             """)
     Optional<User> findByEmailWithRoles(@Param("email") String email);
+
+    @Query("""
+    SELECT DISTINCT u FROM User u
+    LEFT JOIN FETCH u.department d
+    LEFT JOIN FETCH u.userRoles ur
+    LEFT JOIN FETCH ur.role r
+    LEFT JOIN FETCH r.rolePermissions rp
+    LEFT JOIN FETCH rp.permission
+    ORDER BY u.firstname ASC
+""")
+    List<User> findAllWithRolesAndDepartments();
 
     @Query("""
                 SELECT u FROM User u
@@ -37,7 +48,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 LEFT JOIN FETCH r.rolePermissions rp
                 LEFT JOIN FETCH rp.permission
                 WHERE u.id = :id
-                AND u.isActive = true
+                AND u.active = true
             """)
     Optional<User> findByIdWithRoles(@Param("id") UUID id);
 

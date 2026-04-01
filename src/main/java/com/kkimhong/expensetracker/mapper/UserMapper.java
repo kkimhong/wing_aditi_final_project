@@ -6,6 +6,8 @@ import com.kkimhong.expensetracker.entities.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring")
 public interface UserMapper {
 
@@ -14,6 +16,9 @@ public interface UserMapper {
     User toEntity(RegisterRequest request);
 
     @Mapping(target = "departmentName", source = "department.name")
-    @Mapping(target = "permissions", expression = "java(user.getPermissionKeys())")
+    @Mapping(target = "roleName", source = "role.name")
+//    @Mapping(target = "permissions", expression = "java(user.getPermissionKeys())")
     UserResponse toResponse(User user);
+
+    List<UserResponse> toResponseList(List<User> users);
 }

@@ -9,5 +9,6 @@ public record UserResponse(
         String lastname,
         String email,
         String departmentName,
-        List<String> permissions  // ["expenses:create", "expenses:read_own"]
+        String roleName
+//        List<String> permissions  // ["expenses:create", "expenses:read_own"]
 ) {}

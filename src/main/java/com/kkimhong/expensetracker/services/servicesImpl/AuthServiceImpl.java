@@ -15,13 +15,21 @@ import com.kkimhong.expensetracker.repositories.RoleRepository;
 import com.kkimhong.expensetracker.repositories.UserRepository;
 import com.kkimhong.expensetracker.repositories.UserRoleRepository;
 import com.kkimhong.expensetracker.services.AuthService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -42,38 +50,61 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public UserResponse registerUser(RegisterRequest request) {
 
-        if (userRepository.findByEmailAndIsActiveTrue(request.email()).isPresent()) {
+        if (userRepository.findByEmailAndActiveTrue(request.email()).isPresent()) {
             throw new RuntimeException("Email already registered");
         }
 
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new RuntimeException("Department not found"));
 
+        Role role = roleRepository.findById(request.roleId())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setDepartment(department);
         User savedUser = userRepository.save(user);
-
-        Role role = roleRepository.findById(request.roleId())
-                .orElseThrow(() -> new RuntimeException("Role not found"));
 
         UserRole userRole = UserRole.builder()
                 .user(savedUser)
                 .role(role)
                 .department(department)
                 .build();
-
         userRoleRepository.save(userRole);
 
-        User userWithRoles = userRepository.findByEmailWithRoles(savedUser.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return userMapper.toResponse(userWithRoles);
+        savedUser.setUserRoles(Set.of(userRole));
+        return userMapper.toResponse(savedUser);
     }
 
     @Override
-    public AuthResponse loginUser(LoginRequest request) {
-//        long t1 = System.currentTimeMillis();
+    public AuthResponse loginUser(LoginRequest request, HttpServletResponse response) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+        );
+        User user = userRepository.findByEmailWithRoles(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String token = jwtService.generateToken(user);
+
+        ResponseCookie cookie = ResponseCookie.from("access_token", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60)
+                .sameSite("Strict")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return new AuthResponse(
+                token,  // remove later in prod
+                user.getEmail(),
+                user.getFirstname(),
+                user.getLastname(),
+                user.getId(),
+                user.getPermissionKeys()
+        );
+        //        long t1 = System.currentTimeMillis();
 //
 //        authenticationManager.authenticate(
 //                new UsernamePasswordAuthenticationToken(request.email(), request.password())
@@ -90,17 +121,6 @@ public class AuthServiceImpl implements AuthService {
 //                t2 - t1, t3 - t2, t4 - t3, t4 - t1);
 //
 //        return new AuthResponse(token);
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
-        );
-        User user = userRepository.findByEmailWithRoles(request.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        String token = jwtService.generateToken(user);
-        return new AuthResponse(token, user.getEmail(), user.getPermissionKeys());
     }
 
 //    @Override
@@ -108,10 +128,12 @@ public class AuthServiceImpl implements AuthService {
 //        return null;
 //    }
 //
-//    @Override
-//    public List<AuthResponse> getAllUser() {
-//        return List.of();
-//    }
+    @Override
+    public List<UserResponse> getAllUser() {
+        return userMapper.toResponseList(
+                userRepository.findAllWithRolesAndDepartments()
+        );
+    }
 //
 //    @Override
 //    public AuthResponse updateUser(Long id) {

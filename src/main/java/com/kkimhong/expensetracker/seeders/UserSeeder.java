@@ -72,7 +72,7 @@ public class UserSeeder implements ApplicationRunner {
     private void seedSingleUser(Map<String, String> userData) {
         String email = userData.get("email");
 
-        if (userRepository.findByEmailAndIsActiveTrue(email).isPresent()) {
+        if (userRepository.findByEmailAndActiveTrue(email).isPresent()) {
             log.info("User already exists, skipping: {}", email);
             return;
         }
@@ -92,7 +92,7 @@ public class UserSeeder implements ApplicationRunner {
                 .email(email)
                 .password(passwordEncoder.encode(userData.get("password")))
                 .department(department)
-                .isActive(true)
+                .active(true)
                 .build();
 
         User savedUser = userRepository.save(user);
