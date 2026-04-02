@@ -120,4 +120,10 @@ public class User implements UserDetails {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
     }
+
+    // User.java — add below getPermissionKeys()
+    public boolean hasPermission(String module, String action) {
+        String key = module + ":" + action;
+        return getPermissionKeys().contains(key);
+    }
 }

@@ -151,7 +151,7 @@ public class ExpenseServiceImpl implements ExpenseService {
             throw new IllegalArgumentException("Only SUBMITTED expenses can be approved");
         }
 
-        boolean canApproveOwn = currentUser.getRole("expenses", "approve_own");
+        boolean canApproveOwn = currentUser.hasPermission("expenses", "approve_own");
 
         if (!canApproveOwn && expense.isOwnedBy(currentUser.getId())) {
             throw new IllegalArgumentException("You cannot approve your own expense");

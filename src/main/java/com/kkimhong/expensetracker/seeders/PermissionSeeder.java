@@ -53,9 +53,8 @@ public class PermissionSeeder implements ApplicationRunner {
                 Map.of("module", "users",    "action", "read"),
                 Map.of("module", "users",    "action", "update"),
 
-                // settings
-                Map.of("module", "settings", "action", "read"),
-                Map.of("module", "settings", "action", "update"),
+                // permission read is for get all permission
+                Map.of("module", "permissions", "action", "read"),
 
                 // roles
                 Map.of("module", "roles", "action", "create"),
@@ -116,8 +115,6 @@ public class PermissionSeeder implements ApplicationRunner {
                         "users:create",
                         "users:read",
                         "users:update",
-                        "settings:read",
-                        "settings:update",
                         "categories:create",
                         "categories:read",
                         "categories:update",
@@ -129,7 +126,8 @@ public class PermissionSeeder implements ApplicationRunner {
                         "departments:create",
                         "departments:read",
                         "departments:update",
-                        "departments:delete"
+                        "departments:delete",
+                        "permissions:read"
 
                 ),
                 "Auditor", List.of(

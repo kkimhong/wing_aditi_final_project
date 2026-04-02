@@ -104,23 +104,19 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(),
                 user.getPermissionKeys()
         );
-        //        long t1 = System.currentTimeMillis();
-//
-//        authenticationManager.authenticate(
-//                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-//        );
-//        long t2 = System.currentTimeMillis();
-//
-//        User user = userRepository.findByEmailWithRoles(request.email()).orElseThrow();
-//        long t3 = System.currentTimeMillis();
-//
-//        String token = jwtService.generateToken(user);
-//        long t4 = System.currentTimeMillis();
-//
-//        log.info("BCrypt auth: {}ms | DB query: {}ms | JWT gen: {}ms | Total: {}ms",
-//                t2 - t1, t3 - t2, t4 - t3, t4 - t1);
-//
-//        return new AuthResponse(token);
+    }
+
+    @Override
+    public void logoutUser(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("access_token", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
 //    @Override

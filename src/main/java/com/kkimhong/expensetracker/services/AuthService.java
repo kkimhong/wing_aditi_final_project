@@ -11,6 +11,7 @@ import java.util.List;
 public interface AuthService {
     UserResponse registerUser(RegisterRequest request);
     AuthResponse loginUser(LoginRequest request, HttpServletResponse response);
+    void logoutUser(HttpServletResponse response);
 //    AuthResponse getUserById(Long id);
     List<UserResponse> getAllUser();
 //    AuthResponse updateUser(Long id);
