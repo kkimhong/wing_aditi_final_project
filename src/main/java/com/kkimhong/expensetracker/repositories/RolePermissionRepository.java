@@ -14,6 +14,6 @@ import java.util.UUID;
 public interface RolePermissionRepository extends JpaRepository<RolePermission, RolePermissionId> {
     boolean existsByRoleAndPermission(Role role, Permission permission);
     @Modifying
-    @Query("DELETE FROM RolePermission rp WHERE rp.role = :role")
-    void deleteByRole(@Param("role") Role role);
+    @Query("DELETE FROM RolePermission rp WHERE rp.role.id = :roleId")
+    void deleteAllByRoleId(@Param("roleId") UUID roleId);
 }

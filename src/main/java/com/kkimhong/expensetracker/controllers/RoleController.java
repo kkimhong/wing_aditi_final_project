@@ -1,5 +1,6 @@
 package com.kkimhong.expensetracker.controllers;
 
+import com.kkimhong.expensetracker.dtos.request.AssignPermissionsRequest;
 import com.kkimhong.expensetracker.dtos.request.RoleRequest;
 import com.kkimhong.expensetracker.dtos.response.RoleResponse;
 import com.kkimhong.expensetracker.services.RoleService;
@@ -17,7 +18,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping(RoleController.BASE_URL)
 @RequiredArgsConstructor
-@Validated
 public class RoleController {
 
     public static final String BASE_URL = "/api/v1/roles";
@@ -44,9 +44,18 @@ public class RoleController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('roles:update')")
-    public ResponseEntity<RoleResponse> updateRole(@PathVariable UUID id,
-                                                   @Valid @RequestBody RoleRequest request) {
+    public ResponseEntity<RoleResponse> updateRole(
+            @PathVariable UUID id,
+            @Valid @RequestBody RoleRequest request) {
         return ResponseEntity.ok(roleService.updateRole(id, request));
+    }
+
+    @PutMapping("/{id}/permissions")
+    @PreAuthorize("hasAuthority('roles:update')")
+    public ResponseEntity<RoleResponse> updatePermissions(
+            @PathVariable UUID id,
+            @RequestBody AssignPermissionsRequest request) {
+        return ResponseEntity.ok(roleService.updatePermissions(id, request.permissionIds()));
     }
 
     @DeleteMapping("/{id}")

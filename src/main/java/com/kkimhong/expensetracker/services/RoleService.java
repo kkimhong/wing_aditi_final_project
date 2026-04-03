@@ -4,6 +4,7 @@ import com.kkimhong.expensetracker.dtos.request.RoleRequest;
 import com.kkimhong.expensetracker.dtos.response.RoleResponse;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface RoleService {
@@ -11,5 +12,6 @@ public interface RoleService {
     RoleResponse getRoleById(UUID id);
     List<RoleResponse> getAllRoles();
     RoleResponse updateRole(UUID id, RoleRequest request);
+    RoleResponse updatePermissions(UUID id, Set<UUID> permissionIds);
     void deleteRole(UUID id);
 }

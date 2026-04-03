@@ -5,12 +5,15 @@ import com.kkimhong.expensetracker.dtos.response.RoleResponse;
 import com.kkimhong.expensetracker.entities.Permission;
 import com.kkimhong.expensetracker.entities.Role;
 import com.kkimhong.expensetracker.entities.RolePermission;
+import com.kkimhong.expensetracker.entities.RolePermissionId;
 import com.kkimhong.expensetracker.exceptions.DuplicateResourceException;
 import com.kkimhong.expensetracker.exceptions.ResourceNotFoundException;
 import com.kkimhong.expensetracker.mapper.RoleMapper;
 import com.kkimhong.expensetracker.repositories.PermissionRepository;
+import com.kkimhong.expensetracker.repositories.RolePermissionRepository;
 import com.kkimhong.expensetracker.repositories.RoleRepository;
 import com.kkimhong.expensetracker.services.RoleService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,7 @@ public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final EntityManager entityManager;
     private final RoleMapper roleMapper;
 
     @Override
@@ -35,89 +39,95 @@ public class RoleServiceImpl implements RoleService {
         }
 
         Role role = roleMapper.toEntity(request);
-        // We save the role first to get an ID
         roleRepository.save(role);
-
-        // Assign permissions if provided
-        if (request.permissionIds() != null && !request.permissionIds().isEmpty()) {
-            updateRolePermissions(role, request.permissionIds());
-        }
 
         return roleMapper.toResponse(role);
     }
 
     @Override
     public RoleResponse updateRole(UUID id, RoleRequest request) {
-        // Use your specialized query to get the role + existing permissions in one go
-        Role role = roleRepository.findByIdWithPermissions(id);
+        Role role = findByIdWithPermissionsOrThrow(id);
 
-        // 1. Business Logic: Check name uniqueness
         if (!role.getName().equals(request.name()) && roleRepository.existsByName(request.name())) {
             throw new DuplicateResourceException("Role name already taken: " + request.name());
         }
 
-        // 2. Update basic fields
         role.setName(request.name());
         role.setDescription(request.description());
         role.setPriority(request.priority());
 
-        // 3. Smart Permission Update
-        // If permissionIds is NULL, the frontend didn't send it -> Keep existing perms.
-        // If permissionIds is EMPTY [], the frontend wants to clear them.
-        if (request.permissionIds() != null) {
-            updateRolePermissions(role, request.permissionIds());
-        }
+        return roleMapper.toResponse(role);
+    }
 
-        // Hibernate handles all DB sync automatically at the end of @Transactional
+    @Override
+    public RoleResponse updatePermissions(UUID id, Set<UUID> permissionIds) {
+        Role role = findByIdWithPermissionsOrThrow(id);
+        updateRolePermissions(role, permissionIds);
         return roleMapper.toResponse(role);
     }
 
     @Override
     public void deleteRole(UUID id) {
-        Role role = findRoleById(id);
-        // Because of CascadeType.ALL + orphanRemoval,
-        // deleting the role automatically deletes its permissions.
+        Role role = findRoleByIdOrThrow(id);
         roleRepository.delete(role);
-    }
-
-    // --- High-Level Helpers ---
-
-    private void updateRolePermissions(Role role, Set<UUID> permissionIds) {
-        // Clear the memory list. Hibernate tracks this and generates DELETEs.
-        role.getRolePermissions().clear();
-
-        if (permissionIds.isEmpty()) return;
-
-        // Fetch all requested permissions
-        List<Permission> permissions = permissionRepository.findAllById(permissionIds);
-
-        if (permissions.size() != permissionIds.size()) {
-            throw new ResourceNotFoundException("Some permissions were not found");
-        }
-
-        // Map and add to the role's internal list
-        permissions.forEach(permission -> {
-            RolePermission rp = new RolePermission();
-            rp.setRole(role);
-            rp.setPermission(permission);
-            role.getRolePermissions().add(rp);
-        });
-    }
-
-    private Role findRoleById(UUID id) {
-        return roleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + id));
     }
 
     @Override
     @Transactional(readOnly = true)
     public RoleResponse getRoleById(UUID id) {
-        return roleMapper.toResponse(roleRepository.findByIdWithPermissions(id));
+        return roleMapper.toResponse(findByIdWithPermissionsOrThrow(id));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoleResponse> getAllRoles() {
         return roleMapper.toResponseList(roleRepository.findAll());
+    }
+
+    // ─── Private Helpers ──────────────────────────────────────────────────────
+
+    private void updateRolePermissions(Role role, Set<UUID> permissionIds) {
+
+        role.getRolePermissions().clear();
+
+        entityManager.flush(); // 💥 CRITICAL LINE
+
+        if (permissionIds == null || permissionIds.isEmpty()) return;
+
+        List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+
+        if (permissions.size() != permissionIds.size()) {
+            throw new ResourceNotFoundException("Some permissions were not found");
+        }
+
+        permissions.forEach(permission -> {
+            RolePermission rp = new RolePermission();
+
+            RolePermissionId id = new RolePermissionId(
+                    role.getId(),
+                    permission.getId()
+            );
+
+            rp.setId(id);
+            rp.setRole(role);
+            rp.setPermission(permission);
+
+            role.getRolePermissions().add(rp);
+        });
+    }
+
+    // For operations that need permissions loaded (update, get)
+    private Role findByIdWithPermissionsOrThrow(UUID id) {
+        Role role = roleRepository.findByIdWithPermissions(id);
+        if (role == null) {
+            throw new ResourceNotFoundException("Role not found with id: " + id);
+        }
+        return role;
+    }
+
+    // For operations that don't need permissions loaded (delete)
+    private Role findRoleByIdOrThrow(UUID id) {
+        return roleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + id));
     }
 }

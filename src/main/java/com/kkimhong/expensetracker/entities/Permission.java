@@ -29,7 +29,7 @@ public class Permission {
     @Column(nullable = false, length = 50)
     private String action;
 
-    @OneToMany(mappedBy = "permission", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "permission", fetch = FetchType.LAZY)
     @Builder.Default
     private List<RolePermission> rolePermissions = new ArrayList<>();
 

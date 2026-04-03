@@ -140,41 +140,25 @@
 
     <build>
         <plugins>
-
-            <!-- Jib for Docker image build -->
-<!--            <plugin>-->
-<!--                <groupId>com.google.cloud.tools</groupId>-->
-<!--                <artifactId>jib-maven-plugin</artifactId>-->
-<!--                <version>3.4.2</version>-->
-<!--                <configuration>-->
-<!--                    <from>-->
-<!--                        <image>eclipse-temurin:17-jre-alpine</image>-->
-<!--                    </from>-->
-<!--                    <to>-->
-<!--                        <image>ghcr.io/kkimhong/company-expense-tracker</image> &lt;!&ndash; Fixed: was pointing to old repo &ndash;&gt;-->
-<!--                        <tags>-->
-<!--                            <tag>latest</tag>-->
-<!--                        </tags>-->
-<!--                    </to>-->
-<!--                    <container>-->
-<!--                        <environment>-->
-<!--                            <SPRING_PROFILES_ACTIVE>prod</SPRING_PROFILES_ACTIVE>-->
-<!--                        </environment>-->
-<!--                        <jvmFlags>-->
-<!--                            <jvmFlag>-XX:+UseContainerSupport</jvmFlag>-->
-<!--                            <jvmFlag>-XX:MaxRAMPercentage=75.0</jvmFlag>-->
-<!--                            <jvmFlag>-Djava.security.egd=file:/dev/./urandom</jvmFlag>-->
-<!--                        </jvmFlags>-->
-<!--                        <ports>-->
-<!--                            <port>8080</port>-->
-<!--                        </ports>-->
-<!--                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>-->
-<!--                        <format>OCI</format>-->
-<!--                    </container>-->
-<!--                    <allowInsecureRegistries>false</allowInsecureRegistries>-->
-<!--                </configuration>-->
-<!--            </plugin>-->
-
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.3</version>
+                <configuration>
+                    <from>
+                        <image>eclipse-temurin:17-jre-alpine</image>
+                    </from>
+                    <container>
+                        <jvmFlags>
+                            <jvmFlag>-XX:+UseContainerSupport</jvmFlag>
+                            <jvmFlag>-XX:MaxRAMPercentage=75.0</jvmFlag>
+                        </jvmFlags>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                    </container>
+                </configuration>
+            </plugin>
             <!-- Maven Compiler with Lombok + MapStruct annotation processors -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

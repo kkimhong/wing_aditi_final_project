@@ -10,16 +10,16 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(RolePermissionId.class)
 public class RolePermission {
 
-    @Id
+    @EmbeddedId
+    private RolePermissionId id;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
+    @MapsId("roleId") // must match field name
     private Role role;
 
-    @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "permission_id", nullable = false)
+    @MapsId("permissionId") // must match field name
     private Permission permission;
 }

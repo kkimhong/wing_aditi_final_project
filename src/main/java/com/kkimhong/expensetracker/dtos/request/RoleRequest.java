@@ -12,7 +12,6 @@ public record RoleRequest(
         @Size(min = 3, message = "Role name must be at least 3 characters")
         String name,
         String description,
-        @Min(0) int priority,
-        Set<UUID> permissionIds
+        @Min(0) int priority
 ) {
 }
