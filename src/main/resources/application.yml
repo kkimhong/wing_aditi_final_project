@@ -61,9 +61,9 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
-    username: postgres.oirqhgwapzykewevvynq
-    password: postgres@123
+    url: ${SUPABASE_DB_URL}                      # jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
+    username: ${SUPABASE_DB_USER}                # postgres.oirqhgwapzykewevvynq
+    password: ${SUPABASE_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       minimum-idle: 2
@@ -83,9 +83,9 @@ jwt:
   expiration: 86400000
 
 supabase:
-  url: ${SUPABASE_URL:https://oirqhgwapzykewevvynq.supabase.co}
-  key: ${SUPABASE_SERVICE_KEY:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcnFoZ3dhcHp5a2V3ZXZ2eW5xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDAyNzAyMSwiZXhwIjoyMDg5NjAzMDIxfQ.QygwpbmQr3dWP3JDyEeMBlgv52f7p_sdKdVztpklVC4}
-  bucket: ${SUPABASE_BUCKET:receipts}
+  url: ${SUPABASE_URL}
+  key: ${SUPABASE_SERVICE_KEY}                   # No fallback — must be explicitly set
+  bucket: ${SUPABASE_BUCKET:receipts}            # Bucket name is non-sensitive, fallback OK
 
 logging:
   level:

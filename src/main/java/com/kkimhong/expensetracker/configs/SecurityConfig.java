@@ -72,14 +72,33 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setExposedHeaders(List.of("Set-Cookie"));
 
+        // 1. Exact Frontend URL (No trailing slash)
+        config.setAllowedOrigins(List.of("https://wingfinalfrontend.vercel.app"));
+
+        // 2. Allow all standard REST methods
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
+        // 3. Be explicit with headers to avoid browser "wildcard" errors
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "X-Requested-With",
+                "Cache-Control"
+        ));
+
+        // 4. Must be true for JWT Cookies to be stored by the browser
+        config.setAllowCredentials(true);
+
+        // 5. Allow Frontend to read the cookie and Auth headers
+        config.setExposedHeaders(List.of("Set-Cookie", "Authorization"));
+
+        // 6. Apply to ALL paths (/**) instead of just (/api/**)
+        // This ensures /auth/login or /actuator are also covered
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
