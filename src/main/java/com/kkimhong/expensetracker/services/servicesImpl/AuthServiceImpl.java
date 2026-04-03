@@ -114,10 +114,10 @@ public class AuthServiceImpl implements AuthService {
 
         ResponseCookie cookie = ResponseCookie.from("access_token", token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)    // Required for sameSite("None")
                 .path("/")
                 .maxAge(7 * 24 * 60 * 60)
-                .sameSite("Strict")
+                .sameSite("None") // Changed from "Strict" to "None"
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
