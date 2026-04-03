@@ -3,9 +3,7 @@ package com.kkimhong.expensetracker.services.servicesImpl;
 import com.kkimhong.expensetracker.configs.StorageService;
 import com.kkimhong.expensetracker.dtos.request.ExpenseRequest;
 import com.kkimhong.expensetracker.dtos.response.ExpenseResponse;
-import com.kkimhong.expensetracker.entities.Category;
-import com.kkimhong.expensetracker.entities.Expense;
-import com.kkimhong.expensetracker.entities.User;
+import com.kkimhong.expensetracker.entities.*;
 import com.kkimhong.expensetracker.enums.ExpenseStatus;
 import com.kkimhong.expensetracker.mapper.ExpenseMapper;
 import com.kkimhong.expensetracker.repositories.CategoryRepository;
@@ -21,8 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
-
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -37,14 +35,12 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public ExpenseResponse createExpense(ExpenseRequest request, User principalUser) {
-        // Fetch the "managed" user from the DB
         User currentUser = userRepository.findById(principalUser.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
-        // Check category limit
         if (category.getLimitPerSubmission() != null &&
                 request.amount().compareTo(category.getLimitPerSubmission()) > 0) {
             throw new IllegalArgumentException(
@@ -54,7 +50,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         Expense expense = expenseMapper.toEntity(request);
         expense.setSubmitter(currentUser);
-        expense.setDepartment(currentUser.getDepartment()); // ✅ safe now
+        expense.setDepartment(currentUser.getDepartment());
         expense.setCategory(category);
         expense.setCurrency(request.currency() != null ? request.currency() : "USD");
 
@@ -84,21 +80,37 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public List<ExpenseResponse> getDepartmentExpenses(User currentUser) {
-        if (currentUser.getDepartment() == null) {
-            throw new IllegalArgumentException("User has no department assigned");
+        List<UUID> authorizedDeptIds = resolveAuthorizedDepartmentIds(currentUser);
+
+        // Company-wide role (e.g. Admin) — return everything
+        if (authorizedDeptIds == null) {
+            return expenseMapper.toResponseList(expenseRepository.findAllWithDetails());
         }
+
+        if (authorizedDeptIds.isEmpty()) {
+            throw new AccessDeniedException("You have no department scope assigned");
+        }
+
         return expenseMapper.toResponseList(
-                expenseRepository.findByDepartmentIdWithDetails(currentUser.getDepartment().getId())
+                expenseRepository.findByDepartmentIdsWithDetails(authorizedDeptIds)
         );
     }
 
     @Override
     public List<ExpenseResponse> getPendingApprovals(User currentUser) {
-        if (currentUser.getDepartment() == null) {
-            throw new IllegalArgumentException("User has no department assigned");
+        List<UUID> authorizedDeptIds = resolveAuthorizedDepartmentIds(currentUser);
+
+        // Company-wide role (e.g. Admin) — return all pending
+        if (authorizedDeptIds == null) {
+            return expenseMapper.toResponseList(expenseRepository.findAllPending());
         }
+
+        if (authorizedDeptIds.isEmpty()) {
+            throw new AccessDeniedException("You have no department scope assigned");
+        }
+
         return expenseMapper.toResponseList(
-                expenseRepository.findPendingByDepartment(currentUser.getDepartment().getId())
+                expenseRepository.findPendingByDepartments(authorizedDeptIds)
         );
     }
 
@@ -106,7 +118,6 @@ public class ExpenseServiceImpl implements ExpenseService {
     public ExpenseResponse updateExpense(UUID id, ExpenseRequest request, User currentUser) {
         Expense expense = findOrThrow(id);
 
-        // Only owner can edit and only DRAFT expenses
         if (!expense.isOwnedBy(currentUser.getId())) {
             throw new AccessDeniedException("You can only edit your own expenses");
         }
@@ -151,11 +162,11 @@ public class ExpenseServiceImpl implements ExpenseService {
             throw new IllegalArgumentException("Only SUBMITTED expenses can be approved");
         }
 
-        boolean canApproveOwn = currentUser.hasPermission("expenses", "approve_own");
-
-        if (!canApproveOwn && expense.isOwnedBy(currentUser.getId())) {
-            throw new IllegalArgumentException("You cannot approve your own expense");
+        if (expense.isOwnedBy(currentUser.getId())) {
+            throw new AccessDeniedException("You cannot approve your own expense");
         }
+
+        assertAuthorizedForExpenseDepartment(currentUser, expense);
 
         expense.approve(currentUser);
         return expenseMapper.toResponse(expense);
@@ -168,12 +179,15 @@ public class ExpenseServiceImpl implements ExpenseService {
         if (expense.getStatus() != ExpenseStatus.SUBMITTED) {
             throw new IllegalArgumentException("Only SUBMITTED expenses can be rejected");
         }
+
         if (expense.isOwnedBy(currentUser.getId())) {
-            throw new IllegalArgumentException("You cannot reject your own expense");
+            throw new AccessDeniedException("You cannot reject your own expense");
         }
 
+        assertAuthorizedForExpenseDepartment(currentUser, expense);
+
         expense.reject(currentUser);
-        expense.setNotes(comment);  // store rejection reason in notes
+        expense.setNotes(comment);
         return expenseMapper.toResponse(expense);
     }
 
@@ -195,8 +209,59 @@ public class ExpenseServiceImpl implements ExpenseService {
         expenseRepository.deleteById(id);
     }
 
+    // ─── Private helpers ──────────────────────────────────────────────────────────
+
     private Expense findOrThrow(UUID id) {
         return expenseRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense not found"));
+    }
+
+    /**
+     * Asserts the current user has an active role scoped to the expense's department.
+     * Throws AccessDeniedException if not authorized.
+     *
+     * A null department on UserRole means company-wide — always passes (e.g. Admin).
+     */
+    private void assertAuthorizedForExpenseDepartment(User currentUser, Expense expense) {
+        UUID expenseDeptId = expense.getDepartment().getId();
+
+        boolean authorized = currentUser.getUserRoles().stream()
+                .filter(UserRole::isActive)
+                .anyMatch(ur -> ur.isScopedToDepartment(expenseDeptId));
+
+        if (!authorized) {
+            throw new AccessDeniedException(
+                    "You are not authorized to act on expenses in this department"
+            );
+        }
+    }
+
+    /**
+     * Resolves the list of department IDs the current user is authorized for,
+     * based on their active UserRole scopes.
+     *
+     * Returns null  → user has a company-wide role (UserRole.department = null)
+     * Returns list  → user is scoped to these specific department IDs only
+     * Returns empty → user has no active role with any department scope (deny)
+     */
+    private List<UUID> resolveAuthorizedDepartmentIds(User currentUser) {
+        List<UserRole> activeRoles = currentUser.getUserRoles().stream()
+                .filter(UserRole::isActive)
+                .toList();
+
+        // Any company-wide role → null signals "no restriction"
+        boolean isCompanyWide = activeRoles.stream()
+                .anyMatch(ur -> ur.getDepartment() == null);
+
+        if (isCompanyWide) {
+            return null;
+        }
+
+        return activeRoles.stream()
+                .map(UserRole::getDepartment)
+                .filter(Objects::nonNull)
+                .map(Department::getId)
+                .distinct()
+                .toList();
     }
 }

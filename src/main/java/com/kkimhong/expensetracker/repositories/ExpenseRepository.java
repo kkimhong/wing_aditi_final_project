@@ -15,7 +15,7 @@ import java.util.UUID;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 
-    // My expenses — for Employee
+    // My expenses — Employee
     @Query("""
         SELECT e FROM Expense e
         LEFT JOIN FETCH e.category
@@ -26,7 +26,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     """)
     List<Expense> findBySubmitterIdWithDetails(@Param("submitterId") UUID submitterId);
 
-    // All expenses — for Admin/Auditor
+    // All expenses — Admin/Auditor
     @Query("""
         SELECT e FROM Expense e
         LEFT JOIN FETCH e.category
@@ -37,7 +37,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     """)
     List<Expense> findAllWithDetails();
 
-    // Department expenses — for Manager
+    // Department expenses — single dept (kept for internal use)
     @Query("""
         SELECT e FROM Expense e
         LEFT JOIN FETCH e.category
@@ -49,7 +49,19 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     """)
     List<Expense> findByDepartmentIdWithDetails(@Param("departmentId") UUID departmentId);
 
-    // Pending approvals — for Manager
+    // ✅ NEW — Department expenses across multiple dept IDs (multi-scoped Manager)
+    @Query("""
+        SELECT e FROM Expense e
+        LEFT JOIN FETCH e.category
+        LEFT JOIN FETCH e.submitter
+        LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.approvedBy
+        WHERE e.department.id IN :departmentIds
+        ORDER BY e.createdAt DESC
+    """)
+    List<Expense> findByDepartmentIdsWithDetails(@Param("departmentIds") List<UUID> departmentIds);
+
+    // Pending approvals — single dept (kept for internal use)
     @Query("""
         SELECT e FROM Expense e
         LEFT JOIN FETCH e.category
@@ -61,7 +73,30 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     """)
     List<Expense> findPendingByDepartment(@Param("departmentId") UUID departmentId);
 
-    // Filtered expenses — for Admin
+    // ✅ NEW — Pending approvals across multiple dept IDs (multi-scoped Manager)
+    @Query("""
+        SELECT e FROM Expense e
+        LEFT JOIN FETCH e.category
+        LEFT JOIN FETCH e.submitter
+        LEFT JOIN FETCH e.department
+        WHERE e.department.id IN :departmentIds
+        AND e.status = 'SUBMITTED'
+        ORDER BY e.createdAt ASC
+    """)
+    List<Expense> findPendingByDepartments(@Param("departmentIds") List<UUID> departmentIds);
+
+    // ✅ NEW — All pending (for company-wide roles: Admin)
+    @Query("""
+        SELECT e FROM Expense e
+        LEFT JOIN FETCH e.category
+        LEFT JOIN FETCH e.submitter
+        LEFT JOIN FETCH e.department
+        WHERE e.status = 'SUBMITTED'
+        ORDER BY e.createdAt ASC
+    """)
+    List<Expense> findAllPending();
+
+    // Filtered expenses — Admin
     @Query("""
         SELECT e FROM Expense e
         LEFT JOIN FETCH e.category

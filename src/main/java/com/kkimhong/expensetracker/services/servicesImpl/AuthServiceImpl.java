@@ -29,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -81,10 +83,34 @@ public class AuthServiceImpl implements AuthService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
+
         User user = userRepository.findByEmailWithRoles(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String token = jwtService.generateToken(user);
+        String expenseScope;
+        UUID scopeDepartmentId;
+
+        List<UserRole> activeRoles = user.getUserRoles().stream()
+                .filter(UserRole::isActive)
+                .toList();
+
+        boolean isCompanyWide = activeRoles.stream()
+                .anyMatch(ur -> ur.getDepartment() == null);
+
+        if (isCompanyWide) {
+            expenseScope = "COMPANY";
+            scopeDepartmentId = null;
+        } else {
+            expenseScope = "DEPARTMENT";
+            scopeDepartmentId = activeRoles.stream()
+                    .map(UserRole::getDepartment)
+                    .filter(Objects::nonNull)
+                    .map(Department::getId)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        String token = jwtService.generateToken(user, expenseScope, scopeDepartmentId);
 
         ResponseCookie cookie = ResponseCookie.from("access_token", token)
                 .httpOnly(true)
@@ -97,12 +123,17 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         return new AuthResponse(
-                token,  // remove later in prod
+                token,
                 user.getEmail(),
                 user.getFirstname(),
                 user.getLastname(),
+                user.getRole().getId(),
+                user.getRoleName(),
                 user.getId(),
-                user.getPermissionKeys()
+                user.getDepartmentName(),
+                user.getPermissionKeys(),
+                expenseScope,
+                scopeDepartmentId
         );
     }
 
@@ -119,25 +150,10 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-//    @Override
-//    public AuthResponse getUserById(Long id) {
-//        return null;
-//    }
-//
     @Override
     public List<UserResponse> getAllUser() {
         return userMapper.toResponseList(
                 userRepository.findAllWithRolesAndDepartments()
         );
     }
-//
-//    @Override
-//    public AuthResponse updateUser(Long id) {
-//        return null;
-//    }
-//
-//    @Override
-//    public void deleteUser(Long id) {
-//
-//    }
 }

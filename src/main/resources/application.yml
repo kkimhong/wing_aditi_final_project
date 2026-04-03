@@ -1,5 +1,7 @@
 # ---- Shared / Base Configuration ----
 spring:
+  jackson:
+    default-property-inclusion: non_null
   cache:
     type: caffeine
     caffeine:
@@ -72,7 +74,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     defer-datasource-initialization: true
     show-sql: true
 

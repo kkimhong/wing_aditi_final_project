@@ -14,9 +14,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 @Service
 @Slf4j
 public class JwtService {
@@ -35,14 +34,21 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(UserDetails userDetails, String expenseScope, UUID scopeDepartmentId) {
         List<String> authorities = userDetails.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("authorities", authorities);
+        claims.put("expenseScope", expenseScope);
+        if (scopeDepartmentId != null) {
+            claims.put("scopeDepartmentId", scopeDepartmentId.toString());
+        }
+
         return Jwts.builder()
-                .claims(Map.of("authorities", authorities))
+                .claims(claims)
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
@@ -76,18 +82,4 @@ public class JwtService {
                 .toList();
     }
 
-//    public String generateToken(UserDetails userDetails) {
-//        List<String> authorities = userDetails.getAuthorities()
-//                .stream()
-//                .map(GrantedAuthority::getAuthority)
-//                .toList();
-//
-//        return Jwts.builder()
-//                .claims(Map.of("authorities", authorities))
-//                .subject(userDetails.getUsername())
-//                .issuedAt(new Date())
-//                .expiration(new Date(System.currentTimeMillis() + expiration))
-//                .signWith(signingKey, Jwts.SIG.HS256)
-//                .compact();
-//    }
 }

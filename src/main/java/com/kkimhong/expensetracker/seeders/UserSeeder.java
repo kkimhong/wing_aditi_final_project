@@ -41,8 +41,7 @@ public class UserSeeder implements ApplicationRunner {
                         "lastname", "Super",
                         "email", "admin@company.com",
                         "password", "Admin@123",
-                        "role", "Admin",
-                        "department", "Finance"),
+                        "role", "Admin"),
 
                 Map.of("firstname", "John",
                         "lastname", "Doe",
@@ -77,15 +76,17 @@ public class UserSeeder implements ApplicationRunner {
             return;
         }
 
-        // Resolve department
-        Department department = departmentRepository.findByName(userData.get("department"))
-                .orElseThrow(() -> new RuntimeException("Department not found: " + userData.get("department")));
+        String deptName = userData.get("department");
+        Department department = null;
 
-        // Resolve role
+        if (deptName != null) {
+            department = departmentRepository.findByName(deptName)
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + deptName));
+        }
+
         Role role = roleRepository.findByName(userData.get("role"))
                 .orElseThrow(() -> new RuntimeException("Role not found: " + userData.get("role")));
 
-        // Build and save user
         User user = User.builder()
                 .firstname(userData.get("firstname"))
                 .lastname(userData.get("lastname"))
@@ -97,15 +98,15 @@ public class UserSeeder implements ApplicationRunner {
 
         User savedUser = userRepository.save(user);
 
-        // Assign role via UserRole — not user.setRole()
         UserRole userRole = UserRole.builder()
                 .user(savedUser)
                 .role(role)
-                .department(department)  // department-scoped
+                .department(department) // null for Admin, dept for everyone else
                 .build();
 
         userRoleRepository.save(userRole);
 
-        log.info("Seeded user: {} with role: {}", email, role.getName());
+        log.info("Seeded user: {} with role: {} | scope: {}",
+                email, role.getName(), department == null ? "COMPANY" : department.getName());
     }
 }
