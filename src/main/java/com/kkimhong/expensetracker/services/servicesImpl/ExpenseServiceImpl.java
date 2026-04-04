@@ -33,32 +33,8 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final StorageService storageService;
     private final ExpenseMapper expenseMapper;
 
-    @Override
-    public ExpenseResponse createExpense(ExpenseRequest request, User principalUser) {
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
-
-        if (category.getLimitPerSubmission() != null &&
-                request.amount().compareTo(category.getLimitPerSubmission()) > 0) {
-            throw new IllegalArgumentException(
-                    "Amount exceeds category limit of " + category.getLimitPerSubmission()
-            );
-        }
-
-        Expense expense = expenseMapper.toEntity(request);
-        expense.setSubmitter(principalUser);
-        expense.setDepartment(principalUser.getDepartment()); // null for Admin — valid
-        expense.setCategory(category);
-        expense.setCurrency(request.currency() != null ? request.currency() : "USD");
-
-        return expenseMapper.toResponse(expenseRepository.save(expense));
-    }
-
 //    @Override
 //    public ExpenseResponse createExpense(ExpenseRequest request, User principalUser) {
-//        User currentUser = userRepository.findById(principalUser.getId())
-//                .orElseThrow(() -> new RuntimeException("User not found"));
-//
 //        Category category = categoryRepository.findById(request.categoryId())
 //                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 //
@@ -70,13 +46,37 @@ public class ExpenseServiceImpl implements ExpenseService {
 //        }
 //
 //        Expense expense = expenseMapper.toEntity(request);
-//        expense.setSubmitter(currentUser);
-//        expense.setDepartment(currentUser.getDepartment());
+//        expense.setSubmitter(principalUser);
+//        expense.setDepartment(principalUser.getDepartment()); // null for Admin — valid
 //        expense.setCategory(category);
 //        expense.setCurrency(request.currency() != null ? request.currency() : "USD");
 //
 //        return expenseMapper.toResponse(expenseRepository.save(expense));
 //    }
+
+    @Override
+    public ExpenseResponse createExpense(ExpenseRequest request, User principalUser) {
+        User currentUser = userRepository.findById(principalUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
+
+        if (category.getLimitPerSubmission() != null &&
+                request.amount().compareTo(category.getLimitPerSubmission()) > 0) {
+            throw new IllegalArgumentException(
+                    "Amount exceeds category limit of " + category.getLimitPerSubmission()
+            );
+        }
+
+        Expense expense = expenseMapper.toEntity(request);
+        expense.setSubmitter(currentUser);
+        expense.setDepartment(currentUser.getDepartment());
+        expense.setCategory(category);
+        expense.setCurrency(request.currency() != null ? request.currency() : "USD");
+
+        return expenseMapper.toResponse(expenseRepository.save(expense));
+    }
 
     @Override
     public ExpenseResponse getExpenseById(UUID id) {
